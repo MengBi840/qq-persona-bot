@@ -608,7 +608,7 @@ section('七、首次使用体验（.env 没填好时不能让它稀里糊涂跑
   }
 
   const r1 = runWithEnv(
-    'DEEPSEEK_API_KEY=sk-REPLACE_WITH_YOUR_KEY\nPANEL_PASSWORD=my-panel-pass\nOB_ACCESS_TOKEN=my-token-123\n',
+    'DEEPSEEK_API_KEY=sk-REPLACE_WITH_YOUR_KEY\nPANEL_PASSWORD=itest-pw-9911\nOB_ACCESS_TOKEN=my-token-123\n',
   )
   ok('占位符 key 会被拦下来', r1.status === 1, `status=${r1.status}`)
   // 提示是写到 stderr 的（配置错误）
@@ -620,16 +620,26 @@ section('七、首次使用体验（.env 没填好时不能让它稀里糊涂跑
   ok('提示里给出了 .env 的完整路径', `${r1.stdout || ''}${r1.stderr || ''}`.includes('.env'))
 
   const r2 = runWithEnv(
-    'DEEPSEEK_API_KEY=sk-1234567890abcdef\nPANEL_PASSWORD=改成你自己的密码\nOB_ACCESS_TOKEN=my-token-123\n',
+    'DEEPSEEK_API_KEY=sk-1234567890abcdef\nPANEL_PASSWORD=改成你自己的密码\nOB_ACCESS_TOKEN=itest-token-9911\n',
   )
   ok('没改的中文占位密码也会被拦', r2.status === 1, `status=${r2.status}`)
+
+  // .env.example 里的示例值原样留着，也必须被拦（不然用户以为填好了）
+  const r2b = runWithEnv(
+    'DEEPSEEK_API_KEY=sk-1234567890abcdef\nPANEL_PASSWORD=my-panel-pass\nOB_ACCESS_TOKEN=itest-token-9911\n',
+  )
+  ok('.env.example 的示例密码原样留着会被拦', r2b.status === 1, `status=${r2b.status}`)
+  const r2c = runWithEnv(
+    'DEEPSEEK_API_KEY=sk-1234567890abcdef\nPANEL_PASSWORD=itest-pw-9911\nOB_ACCESS_TOKEN=my-token-123\n',
+  )
+  ok('.env.example 的示例 token 原样留着会被拦（没加 --no-qq 时）', r2c.status === 1, `status=${r2c.status}`)
 
   // 填全了就应该能真的跑起来：异步启动，趁它活着探测控制台 HTTP
   const r3port = 18111
   const { spawn } = await import('node:child_process')
   fs.writeFileSync(
     path.join(tmpHome, '.env'),
-    'DEEPSEEK_API_KEY=sk-1234567890abcdef\nPANEL_PASSWORD=itest-pass\nOB_ACCESS_TOKEN=my-token-123\n',
+    'DEEPSEEK_API_KEY=sk-1234567890abcdef\nPANEL_PASSWORD=itest-pw-9911\nOB_ACCESS_TOKEN=itest-token-9911\n',
     'utf8',
   )
   const childEnv = { ...process.env }
