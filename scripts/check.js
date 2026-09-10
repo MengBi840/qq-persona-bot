@@ -46,6 +46,10 @@ section('零、配置路径自检（防“点错层”这类低级错误）')
     'sk-REPLACE_WITH_YOUR_KEY',
     'sk-在这里粘贴你的key',
     '改成你自己的密码',
+    '改成你自己想的密码',
+    '自己定一个暗号',
+    'my-panel-pass',
+    'my-token-123',
     '<your-key>',
     'changeme',
     'xxxxxx',
@@ -54,10 +58,10 @@ section('零、配置路径自检（防“点错层”这类低级错误）')
   }
   for (const good of [
     'sk-aCVaUETyJLY16xsV6wFE2UYaHRsu342X1qIi',
-    'my-panel-pass',
+    'itest-pw-9911',
     'MyS3cret!2026',
     '我的密码不是占位',
-    'my-token-123',
+    'qqbot-2026-abc',
   ]) {
     ok(`正常值不会被误杀：${JSON.stringify(good)}`, looksLikePlaceholder(good) === false)
   }
