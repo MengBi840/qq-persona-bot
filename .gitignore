@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+data/
+assets/images/*
+!assets/images/.gitkeep
+config.json
+*.log
