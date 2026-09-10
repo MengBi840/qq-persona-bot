@@ -100,18 +100,126 @@ export const env = {
 
 /**
  * 判断某个值是不是「还没改的占位文字」。
- * 注意不能简单地把「带中文」当成占位符 —— 用户完全可能把控制台密码设成中文。
- * 这里只认明显的「安装说明式」措辞，中英文都覆盖。
+ * 注意两点：
+ *   1) 不能简单地把「带中文」当成占位符 —— 用户完全可能把控制台密码设成中文。
+ *      但「改成你自己的密码」这种安装说明式措辞必须认出来。
+ *   2) .env.example 里给的那几个示例值（my-panel-pass / my-token-123 / sk-REPLACE…）
+ *      也要认出来，否则用户原样留着示例值，程序会以为填好了。
  */
 export function looksLikePlaceholder(v) {
   const s = String(v || '').trim()
   if (!s) return true
   if (/^sk-(REPLACE|YOUR|TEST|XXX|CHANGE|TODO|PLACEHOLDER)/i.test(s)) return true
   if (/[<>{}]/.test(s)) return true // 形如 <your-key>
-  if (/(你的|改成|填入|粘贴|在这里|自己的)/.test(s)) return true
+  if (/(你的|改成|填入|粘贴|在这里|自己的|自己定|定一个)/.test(s)) return true
   if (/(REPLACE|CHANGEME|CHANGE_ME|PLACEHOLDER|YOUR_KEY|YOURKEY|TODO|DUMMY|EXAMPLE)/i.test(s)) return true
+  if (/my-panel-pass|my-token-123|panel-pass|token-123/i.test(s)) return true // .env.example 里的示例值
   if (/x{6,}/i.test(s)) return true // 一串 x 当占位
   return false
+}
+
+/** 把密钥打码后再显示，避免截图/贴日志时泄漏 */
+function mask(v) {
+  const s = String(v || '')
+  if (!s) return '(空)'
+  if (s.length <= 8) return s[0] + '***'
+  return `${s.slice(0, 3)}***${s.slice(-3)}（共 ${s.length} 位）`
+}
+
+/**
+ * 自检报告：`qqbot.exe --check`
+ * 给「双击一闪就没了 / 不知道卡在哪」的人用，把所有关键状态一次打清楚。
+ */
+export function preflightReport() {
+  const line = (s = '') => console.log(s)
+  const mark = (ok) => (ok ? '[OK]  ' : '[!!]  ')
+  const exists = (p) => {
+    try {
+      return fs.existsSync(p)
+    } catch {
+      return false
+    }
+  }
+
+  line('')
+  line('========== QQ 群 BOT 自检 ==========')
+  line('')
+
+  line('【1】路径')
+  line(`      程序目录     ${PATHS.ROOT}`)
+  line(`      .env         ${PATHS.ENV_FILE}${exists(PATHS.ENV_FILE) ? '' : '   <-- 不存在'}`)
+  line(`      persona.md   ${PATHS.PERSONA_FILE}${exists(PATHS.PERSONA_FILE) ? '' : '   <-- 不存在，会用内置兜底人设'}`)
+  line(`      config.json  ${PATHS.CONFIG_FILE}${exists(PATHS.CONFIG_FILE) ? '' : '   （还没生成，正常）'}`)
+  line(`      图库目录     ${PATHS.IMAGE_DIR}${exists(PATHS.IMAGE_DIR) ? '' : '   <-- 不存在'}`)
+  line('')
+
+  line('【2】.env 读到了什么（密钥已打码）')
+  line(`      ${mark(ENV_FILE_LOADED)} .env 文件${ENV_FILE_LOADED ? '已载入' : '没读到'}`)
+
+  // 这里标记和【3】用同一套规则，避免出现「上面 OK 下面 !!」这种自相矛盾
+  const keyOk = !!env.deepseekKey && !looksLikePlaceholder(env.deepseekKey) && /^sk-.{8,}$/.test(env.deepseekKey)
+  const pwOk = !!env.panelPassword && !looksLikePlaceholder(env.panelPassword)
+  const tokenOk = !!env.accessToken && !looksLikePlaceholder(env.accessToken)
+
+  line(`      ${mark(keyOk)} DEEPSEEK_API_KEY    ${mask(env.deepseekKey)}`)
+  line(`      ${mark(pwOk)} PANEL_PASSWORD      ${mask(env.panelPassword)}`)
+  line(`      ${mark(env.noQQ || tokenOk)} OB_ACCESS_TOKEN     ${mask(env.accessToken)}`)
+  line(`           DEEPSEEK_MODEL    ${env.deepseekModel}`)
+  line(`           OB_WS_URL         ${env.wsUrl}`)
+  line(`           控制台地址        http://${env.panelHost}:${env.panelPort}`)
+  line('')
+
+  line('【3】必填项检查')
+  const problems = []
+  if (!keyOk) {
+    problems.push('DEEPSEEK_API_KEY：没填、填的还是占位文字，或者格式不像真 key（应该 sk- 开头一长串）')
+  }
+  if (!pwOk) {
+    problems.push('PANEL_PASSWORD：没填，或填的还是示例文字（比如 my-panel-pass / 改成你自己的密码）')
+  }
+  if (!env.noQQ && !tokenOk) {
+    problems.push('OB_ACCESS_TOKEN：没填，或填的还是示例文字（要和 NapCat 里那个 Token 一致）')
+  }
+  if (problems.length) {
+    for (const p of problems) line(`      ${mark(false)} ${p}`)
+  } else {
+    line(`      ${mark(true)} 必填项都填好了`)
+  }
+  line('')
+
+  line('【4】人设')
+  try {
+    const raw = fs.readFileSync(PATHS.PERSONA_FILE, 'utf8')
+    line(`      ${mark(true)} persona.md 可读，${raw.length} 字`)
+  } catch (e) {
+    line(`      ${mark(false)} persona.md 读不到：${e.message}`)
+    line('             （这不会让程序崩，会自动用内置兜底人设）')
+  }
+  line('')
+
+  line('【5】下一步怎么做')
+  if (!ENV_FILE_LOADED || problems.length) {
+    line('      1) 用记事本打开这个文件：')
+    line(`         ${PATHS.ENV_FILE}`)
+    line('         （如果它不存在，把同目录的 .env.example 复制一份改名成 .env）')
+    line('      2) 把 DEEPSEEK_API_KEY / PANEL_PASSWORD / OB_ACCESS_TOKEN 三行改成你自己的值')
+    line('         DeepSeek key 申请： https://platform.deepseek.com/api_keys')
+    line('      3) 保存后重新跑一次自检，全 [OK] 了再启动')
+    line('')
+    line('      只想先看看界面、暂时不连 QQ：  qqbot.exe --no-qq')
+  } else {
+    line('      .env 没问题了。接下来：')
+    line('      1) 确认 NapCat 已启动、扫码登录，并在它的 WebUI 里开了 WebSocket 服务器')
+    line('         （默认 127.0.0.1:3001，Token 必须和 OB_ACCESS_TOKEN 一模一样）')
+    line(`      2) 启动：  ${path.basename(process.execPath)}`)
+    line(`         浏览器打开  http://${env.panelHost}:${env.panelPort}  用 PANEL_PASSWORD 登录`)
+    line('')
+    line('      想确认 NapCat 通不通：先启动机器人，看日志里有没有「OneBot 已连上 NapCat」')
+  }
+  line('')
+  line('====================================')
+  line('')
+  return problems.length === 0 && ENV_FILE_LOADED
 }
 
 /** 启动前检查必填项，缺了就给出人话提示直接退出 */
@@ -143,7 +251,11 @@ export function assertEnv() {
   if (!ENV_FILE_LOADED) {
     console.error(`  它还不存在，把 ${path.join(PATHS.ROOT, '.env.example')} 复制成 .env 再改。`)
   }
-  console.error('  想先只开控制台、不连 QQ：加参数 --no-qq')
+  console.error('')
+  console.error('  想看完整自检报告（推荐）：')
+  console.error(`    ${path.basename(process.execPath)} --check`)
+  console.error('  想先只开控制台、不连 QQ：')
+  console.error(`    ${path.basename(process.execPath)} --no-qq`)
   console.error('')
   process.exit(1)
 }
