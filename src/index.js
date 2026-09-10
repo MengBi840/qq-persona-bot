@@ -7,13 +7,14 @@
 //
 // 命令行参数：
 //   （无）        连 NapCat + 开本地控制台
+//   --check      只做自检并把报告打出来，不启动（排查「启动不了」用这个）
 //   --no-qq      只开控制台，不连 QQ（调面板/改人设用）
 //   --help       看帮助
 //   --version    看版本
 //   --quiet      少打日志
 // ============================================================================
 
-import { env, assertEnv, getConfig, PARAM_NOTE, PATHS, ENV_FILE_LOADED, ensureDirs } from './config.js'
+import { env, assertEnv, getConfig, PARAM_NOTE, PATHS, ENV_FILE_LOADED, ensureDirs, preflightReport } from './config.js'
 import { log, setLevel } from './logger.js'
 import { start, stop } from './bot.js'
 import { startPanel } from './panel.js'
@@ -30,8 +31,9 @@ function printHelp() {
   line('  QQ 群 BOT（NapCat + DeepSeek）')
   line('')
   line('  用法：')
+  line('    qqbot.exe --check        先做自检，看配置/路径/人设对不对（启动不了就敲这个）')
   line('    qqbot.exe                连 NapCat 并开启本地控制台')
-  line('    qqbot.exe --no-qq        只开控制台，不连 QQ（调试用）')
+  line('    qqbot.exe --no-qq        只开控制台，不连 QQ（调试界面用）')
   line('    qqbot.exe --quiet        少打日志')
   line('    qqbot.exe --help         显示这段帮助')
   line('    qqbot.exe --version      显示版本号')
@@ -65,6 +67,11 @@ if (has('--help') || has('-h')) {
 if (has('--version') || has('-v')) {
   printVersion()
   process.exit(0)
+}
+// 自检模式：不管配置对不对都打印报告，方便排查；配置有问题就返回退出码 1
+if (has('--check')) {
+  const fine = preflightReport()
+  process.exit(fine ? 0 : 1)
 }
 
 if (env.quiet) setLevel('warn')
