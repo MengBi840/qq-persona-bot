@@ -132,8 +132,11 @@ step(5, '把运行需要的文件摆到 exe 旁边')
   const copied = []
   if (copyIfExists(path.join(ROOT, 'persona.md'), path.join(OUT_DIR, 'persona.md'))) copied.push('persona.md')
   if (copyIfExists(path.join(ROOT, '.env.example'), path.join(OUT_DIR, '.env.example'))) copied.push('.env.example')
-  if (copyIfExists(path.join(ROOT, '启动.bat'), path.join(OUT_DIR, '启动.bat'))) copied.push('启动.bat')
-  if (copyIfExists(path.join(ROOT, '使用教程.md'), path.join(OUT_DIR, '使用教程.md'))) copied.push('使用教程.md')
+
+  // 启动脚本和说明文件都从 packaging/ 拷，保证 dist 里那份和源码里那份一致
+  for (const f of ['启动.bat', 'start-bot.bat', '怎么填密钥.txt', '使用教程.md']) {
+    if (copyIfExists(path.join(ROOT, 'packaging', f), path.join(OUT_DIR, f))) copied.push(f)
+  }
 
   fs.mkdirSync(path.join(OUT_DIR, 'assets', 'images'), { recursive: true })
   fs.mkdirSync(path.join(OUT_DIR, 'data', 'tmp'), { recursive: true })
