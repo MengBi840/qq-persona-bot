@@ -1,0 +1,29 @@
+{
+  "name": "qq-persona-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NapCat(OneBot v11) + DeepSeek 群聊人格 BOT：口语短句、去八股、收图多模态、本地图库发图、本机 Web 控制台，可打包成单文件 exe",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node scripts/check.js",
+    "test:all": "node scripts/check.js && node scripts/integration.js",
+    "build:exe": "node scripts/build-exe.js",
+    "simulate": "node scripts/simulate.js",
+    "smoke": "node scripts/smoke-send.js",
+    "panel": "node src/index.js --no-qq"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "openai": "^4.77.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  }
+}
